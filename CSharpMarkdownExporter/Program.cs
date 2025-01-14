@@ -22,9 +22,12 @@ namespace CSharpMarkdownExporter
             WriteLaunchJson(baseDir);
             WriteExtensionsJson(baseDir);
 
+            // 2. Write a README.md that documents the extension (inlined content)
+            WriteReadmeMd(baseDir);
+
             Console.WriteLine("VSCode extension skeleton has been created.");
 
-            // 2. Build and package the extension (npm install → compile → vsce package)
+            // 3. Build and package the extension (npm install → compile → vsce package)
             PackageExtension(baseDir);
 
             Console.WriteLine("Packaging process completed.");
@@ -242,6 +245,67 @@ suite('Extension Test Suite', () => {
   ""recommendations"": [
   ]
 }
+";
+            File.WriteAllText(filePath, content);
+        }
+
+        /// <summary>
+        /// Writes a README.md file that VS Code / Marketplace will display
+        /// when users view your extension details. (Inline content version)
+        /// </summary>
+        static void WriteReadmeMd(string baseDir)
+        {
+            string filePath = Path.Combine(baseDir, "README.md");
+
+            string content =
+@"# CSharp Markdown Exporter
+
+This VS Code extension allows you to export:
+- Git-tracked file structure
+- `.sln` (solution) files
+- `.csproj` (project) files
+- Currently opened files in the editor
+
+...all in a single Markdown document, making it easy to share or use with Large Language Models (LLMs).
+
+## Features
+
+1. **Retrieve Git-tracked files**  
+   Uses `git ls-files` (or VS Code Git APIs) to list all files under version control.
+
+2. **Force-includes `.sln` and `.csproj`**  
+   Automatically searches your workspace for these files and exports their contents in Markdown code blocks.
+
+3. **Include currently opened files**  
+   Collects all open text documents in VS Code (e.g., `.cs`, `.json`, `.csproj`) and appends them as code blocks.
+
+4. **Single Markdown Export**  
+   Displays everything in one *Untitled* editor, so you can quickly copy and paste into an LLM prompt or anywhere else.
+
+## Requirements
+
+- .NET runtime or SDK (if building the C# solution).
+- A Git repository initialized in your workspace (for Git file listing).
+- VS Code 1.70.0 or higher (see `engines.vscode` in `package.json`).
+
+## Extension Settings
+
+Currently, there are no configurable settings. Future updates may provide
+customization options (such as excluding large files or ignoring certain file patterns).
+
+## Known Issues
+
+- Large solutions might generate very large Markdown outputs.
+- Handling multiple `.sln` or `.csproj` files is limited to basic concatenation.
+
+## Release Notes
+
+### 0.0.1
+- Initial release with basic export functionality.
+
+---
+
+Happy coding!
 ";
             File.WriteAllText(filePath, content);
         }

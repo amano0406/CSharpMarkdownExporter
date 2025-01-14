@@ -120,17 +120,17 @@ Below is an excerpt of the kind of Markdown output the extension might generate:
   ...
 
 # /path/to/MyProject.sln
-```xml
+\`\`\`xml
 (Solution file content)
-```
+\`\`\`
 
 # /path/to/MyProject/MyProject.csproj
-```xml
+\`\`\`xml
 (Project file content)
-```
+\`\`\`
 
 # /path/to/MyProject/Program.cs
-```csharp
+\`\`\`csharp
 using System;
 
 namespace MyProject
@@ -143,7 +143,7 @@ namespace MyProject
         }
     }
 }
-```
+\`\`\`
 ```
 </details>
 
