@@ -1,7 +1,3 @@
-Below is an example **README** structure with a table of contents that splits the explanation into two main parts: one for the **C# solution** itself and one for the **VS Code extension**. You can adapt or expand each section as needed.
-
----
-
 # CSharpMarkdownExporter
 
 ## Table of Contents
@@ -178,7 +174,7 @@ Permission is hereby granted, free of charge, ...
 
 ## 5. Contact / Author
 
-- **Author**: Your Name (GitHub handle, website, or email)  
+- **Author**: Yutaro Amano (GitHub handle, https://github.com/amano0406)  
 - **Issues / Feedback**: Please open an [issue](https://github.com/your-repo/issues) on GitHub.
 
 ---
