@@ -9,61 +9,51 @@ namespace CSharpMarkdownExporter
     {
         static void Main(string[] args)
         {
-            // 出力先のベースフォルダ名
-            // ※ 拡張機能名を "csharp-md-exporter" に変更
+            // Base directory name for the output (extension name set to "csharp-md-exporter")
             string baseDir = "csharp-md-exporter";
 
-            // 1. VSCode拡張スケルトン構成を作成
+            // 1. Create the VSCode extension skeleton structure
             CreateDirectoryStructure(baseDir);
             WriteGitIgnore(baseDir);
             WritePackageJson(baseDir);
             WriteTsConfigJson(baseDir);
-            WriteExtensionTs(baseDir);       // extension.ts をリソースから書き出す
+            WriteExtensionTs(baseDir); // Write extension.ts from the embedded resource
             WriteExtensionTestTs(baseDir);
             WriteLaunchJson(baseDir);
             WriteExtensionsJson(baseDir);
 
-            Console.WriteLine("VSCode拡張スケルトンを生成しました。");
+            Console.WriteLine("VSCode extension skeleton has been created.");
 
-            // 2. 拡張をビルド＆パッケージング (npm install → compile → vsce package)
+            // 2. Build and package the extension (npm install → compile → vsce package)
             PackageExtension(baseDir);
 
-            Console.WriteLine("パッケージング処理が完了しました。");
-            Console.WriteLine($"出力先: {Path.Combine(Directory.GetCurrentDirectory(), baseDir)}");
-            Console.WriteLine("※ 拡張子 .vsix のファイルが生成されていれば成功です。");
+            Console.WriteLine("Packaging process completed.");
+            Console.WriteLine($"Output directory: {Path.Combine(Directory.GetCurrentDirectory(), baseDir)}");
+            Console.WriteLine("If a .vsix file has been generated, the packaging succeeded.");
         }
 
         /// <summary>
-        /// 必要なディレクトリ構造を作成
+        /// Creates the necessary directory structure.
         /// </summary>
         static void CreateDirectoryStructure(string baseDir)
         {
-            // 既存のディレクトリが存在する場合は削除
+            // Delete the existing directory if it already exists
             if (Directory.Exists(baseDir))
             {
-                Directory.Delete(baseDir, true); // 第二引数をtrueにすると再帰的に削除
+                // Passing 'true' as the second argument allows a recursive delete
+                Directory.Delete(baseDir, true);
             }
 
-            // 新しいディレクトリ構造を作成
-
-            // csharp-md-exporter/
+            // Create the new directory structure
             Directory.CreateDirectory(baseDir);
-
-            // csharp-md-exporter/.vscode/
             Directory.CreateDirectory(Path.Combine(baseDir, ".vscode"));
-
-            // csharp-md-exporter/src/
             Directory.CreateDirectory(Path.Combine(baseDir, "src"));
-
-            // csharp-md-exporter/src/test/
             Directory.CreateDirectory(Path.Combine(baseDir, "src", "test"));
-
-            // csharp-md-exporter/src/test/suite/
             Directory.CreateDirectory(Path.Combine(baseDir, "src", "test", "suite"));
         }
 
         /// <summary>
-        /// .gitignoreファイルを書き出す
+        /// Writes the .gitignore file.
         /// </summary>
         static void WriteGitIgnore(string baseDir)
         {
@@ -77,7 +67,7 @@ out
         }
 
         /// <summary>
-        /// package.json を書き出す (拡張機能名を変更)
+        /// Writes package.json (with the extension name changed).
         /// </summary>
         static void WritePackageJson(string baseDir)
         {
@@ -126,7 +116,7 @@ out
         }
 
         /// <summary>
-        /// tsconfig.json を書き出す
+        /// Writes tsconfig.json.
         /// </summary>
         static void WriteTsConfigJson(string baseDir)
         {
@@ -154,37 +144,36 @@ out
         }
 
         /// <summary>
-        /// src/extension.ts をリソースから読み出し、ファイルとして書き出す
+        /// Reads src/extension.ts from the embedded resource and writes it to a file.
         /// </summary>
         static void WriteExtensionTs(string baseDir)
         {
-            // 出力ファイルパス
+            // Output file path
             string filePath = Path.Combine(baseDir, "src", "extension.ts");
 
-            // 埋め込みリソース名
-            // 既定では「名前空間 + ファイル名」になることが多いですが、
-            // 実際の組込み名はプロジェクトやnamespaceによって異なる場合があります。
-            // 下記は「CSharpMarkdownExporter.extension.ts」を想定。
+            // Name of the embedded resource
+            // By default, it often consists of "namespace + filename", but the actual naming can vary.
+            // The line below assumes "CSharpMarkdownExporter.extension.ts".
             string resourceName = "CSharpMarkdownExporter.extension.ts";
 
-            // アセンブリからリソースを取得
+            // Acquire the resource from the assembly
             var assembly = Assembly.GetExecutingAssembly();
             using var stream = assembly.GetManifestResourceStream(resourceName);
             if (stream == null)
             {
-                Console.WriteLine($"ERROR: 埋め込みリソース '{resourceName}' が見つかりません。");
+                Console.WriteLine($"ERROR: Embedded resource '{resourceName}' not found.");
                 return;
             }
 
             using var reader = new StreamReader(stream);
             string content = reader.ReadToEnd();
 
-            // 書き出し
+            // Write to file
             File.WriteAllText(filePath, content);
         }
 
         /// <summary>
-        /// src/test/suite/extension.test.ts を書き出す
+        /// Writes src/test/suite/extension.test.ts.
         /// </summary>
         static void WriteExtensionTestTs(string baseDir)
         {
@@ -202,7 +191,7 @@ suite('Extension Test Suite', () => {
         }
 
         /// <summary>
-        /// .vscode/launch.json を書き出す
+        /// Writes .vscode/launch.json.
         /// </summary>
         static void WriteLaunchJson(string baseDir)
         {
@@ -243,7 +232,7 @@ suite('Extension Test Suite', () => {
         }
 
         /// <summary>
-        /// .vscode/extensions.json を書き出す
+        /// Writes .vscode/extensions.json.
         /// </summary>
         static void WriteExtensionsJson(string baseDir)
         {
@@ -258,16 +247,15 @@ suite('Extension Test Suite', () => {
         }
 
         /// <summary>
-        /// npm i → npm run compile → vsce package を実行し、
-        /// VSCode拡張を .vsix にパッケージングする
+        /// Executes 'npm install', 'npm run compile', and 'vsce package' to package the VSCode extension into a .vsix file.
         /// </summary>
         static void PackageExtension(string baseDir)
         {
-            // 実行前に、package.jsonがあるか軽くチェックしておく
+            // Check if package.json exists before proceeding
             string packageJsonPath = Path.Combine(baseDir, "package.json");
             if (!File.Exists(packageJsonPath))
             {
-                Console.WriteLine("package.json が存在しません。パッケージングをスキップします。");
+                Console.WriteLine("package.json does not exist. Skipping packaging.");
                 return;
             }
 
@@ -278,18 +266,18 @@ suite('Extension Test Suite', () => {
             RunCommand("npm run compile", baseDir);
 
             // vsce package
-            // → "csharp-md-exporter-0.0.1.vsix" のようなファイルが生成されるはず
+            // This should generate a file like "csharp-md-exporter-0.0.1.vsix"
             RunCommand("vsce package", baseDir);
         }
 
         /// <summary>
-        /// 指定コマンドを指定ディレクトリで実行するヘルパー
+        /// Helper method to run the specified command in the specified directory.
         /// </summary>
         static void RunCommand(string command, string workDir)
         {
             Console.WriteLine($"> {command} @ {workDir}");
 
-            // Windows向けに cmd.exe /c で実行
+            // For Windows, we use cmd.exe /c
             var psi = new ProcessStartInfo
             {
                 FileName = "cmd.exe",
@@ -316,12 +304,11 @@ suite('Extension Test Suite', () => {
             proc.Start();
             proc.BeginOutputReadLine();
             proc.BeginErrorReadLine();
-
             proc.WaitForExit();
 
             if (proc.ExitCode != 0)
             {
-                Console.WriteLine($@"ERROR: コマンド終了コード {proc.ExitCode} です。");
+                Console.WriteLine($@"ERROR: Command exited with code {proc.ExitCode}.");
             }
         }
     }

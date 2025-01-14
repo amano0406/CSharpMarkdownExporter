@@ -1,132 +1,114 @@
-# VS Code 拡張機能 仕様書
-
-## 1. 概要
-本拡張機能は、**C#** のプロジェクトを開いている Visual Studio Code 上で、以下を一括してマークダウン形式で出力するためのものです。
-
-1. Git で管理されているファイル構造（ディレクトリツリー）
-2. ソリューションファイル（`.sln`）
-3. プロジェクトファイル（`.csproj`）
-4. 現在開いているファイルのコード
-
-出力結果は、VS Code の一時的なタブ（保存されていない仮ファイル）に表示され、ユーザはコピー&ペーストして LLM へのプロンプトとして活用する想定です。
+Below is an example **README** structure with a table of contents that splits the explanation into two main parts: one for the **C# solution** itself and one for the **VS Code extension**. You can adapt or expand each section as needed.
 
 ---
 
-## 2. ユースケース
+# CSharpMarkdownExporter
 
-1. **コードレビュー・修正依頼などを LLM に依頼したい**  
-   - ソリューションファイルやプロジェクトファイルなどを含め、現在作業中のコードをまとめて LLM に渡すことで、依存関係や設定を含めたアドバイスを受けたい。
-
-2. **複数ファイルをまとめて LLM に送信し、変更案を一括で得たい**  
-   - 小規模な修正ではなく複数ファイルにまたがる変更のヒントがほしい場合、全ファイルをまとめて提示したい。
-
----
-
-## 3. 機能要件
-
-1. **Git 管理のファイル構造の取得**  
-   - 現在開いているワークスペース(=プロジェクト)内で Git 管理されているファイル・ディレクトリ構造を取得する。  
-   - 取得したファイル構造をテキスト出力の冒頭に表示する。  
-   - 表示形式はツリー構造や階層を示す簡易的なリストでよい。
-
-2. **ソリューションファイル (`.sln`) の強制出力**  
-   - ワークスペース内に `.sln` ファイルが存在する場合は、必ず出力対象とする。  
-   - 拡張機能でファイルを取得できなければエラーを出すか、警告表示を行う。  
-   - マークダウン出力では、ファイルパスを表示したあとにコードブロックを続ける。
-
-3. **プロジェクトファイル (`.csproj`) の強制出力**  
-   - `.csproj` ファイルが存在する場合は、必ず出力対象とする。  
-   - 同様に、存在しない場合には警告などを表示し、ユーザに気付きを与える。  
-   - 出力形式は `.sln` と同様、ファイルパスのあとにコードブロックを続ける。
-
-4. **現在開いているファイルの取得・出力**  
-   - ユーザが VS Code 上で開いているタブのうち、C# ファイル (`.cs`) や関連する設定ファイル (`.json`, `.csproj` など) を選択し、まとめて出力する。  
-   - 出力は次の形式で行う:  
-     ```
-     ファイルパス
-     ```言語
-     // コード本文
-     ```
-     ```
-   - 複数ファイルが開いている場合、上記フォーマットを連続して記述する。
-
-5. **出力先**  
-   - 出力は、VS Code 内で新規に開く一時ファイル (Untitled) として表示する。  
-   - ユーザはそこからコピーして LLM に送信することを想定。
+## Table of Contents
+1. [Solution Overview](#solution-overview)
+2. [VS Code Extension Overview](#vs-code-extension-overview)  
+   2.1. [Use Cases](#use-cases)  
+   2.2. [Functional Requirements](#functional-requirements)  
+   2.3. [Workflow / How It Works](#workflow--how-it-works)  
+   2.4. [Implementation Notes](#implementation-notes)  
+   2.5. [Sample Output](#sample-output)
+3. [How to Build and Run](#how-to-build-and-run)
+4. [License](#license)
+5. [Contact / Author](#contact--author)
 
 ---
 
-## 4. 画面・操作フロー
+## 1. Solution Overview
 
-1. **コマンド実行**  
-   - コマンドパレット (Ctrl+Shift+P) から拡張機能を呼び出す（例: `Markdown Blocks: Export for LLM`）。
+Here you can describe the **C# solution** in detail. For example:
 
-2. **Git 管理ファイル構造の取得**  
-   - コマンド実行時、拡張機能はワークスペース・ルートディレクトリから `.git` を辿り、Git 管理対象ファイル一覧を取得する。  
-   - ディレクトリツリーとして整形し、テキスト化する。
+- **Project Structure**  
+  - `.sln` file  
+  - `.csproj` file(s)  
+  - Key C# source files (`Program.cs`, etc.)  
+- **Purpose and Features** of the console application (if any).
+- **Directory Layout** (e.g., how your solution is organized).
+- **Dependencies / Requirements** (e.g., .NET version).
 
-3. **ソリューションファイル & プロジェクトファイルの検索・読み込み**  
-   - `.sln` / `.csproj` のファイルを検索し、読み込む。  
-   - 存在しない場合は警告を表示し、続行する（またはユーザに動作を選択させる）。
+You might also include a snippet of the `.sln` or `.csproj` here, or refer to them as needed:
 
-4. **現在開いているファイルのコード抽出**  
-   - VS Code の API を使用し、現在エディタに開いているファイルを取得。  
-   - 対象外ファイル（例: バイナリ、画像など）は除外しても良い。  
-   - コードを取得する際には、未保存の変更を含める。
+<details>
+<summary>Solution File Snippet</summary>
 
-5. **出力用テキスト生成**  
-   1. **冒頭**  
-      - 「Git 管理ファイル構造」のテキストを表示。  
-   2. **ソリューションファイル / プロジェクトファイル**  
-      - `ソリューションファイルパス`  
-        \```xml  
-        (ファイル内容)  
-        \```  
-      - `プロジェクトファイルパス`  
-        \```xml  
-        (ファイル内容)  
-        \```  
-   3. **開いているファイルごとに**  
-      - `ファイルパス`  
-        \```(拡張子に応じた言語)  
-        (コード内容)  
-        \```  
-
-6. **Untitled ファイルとして開く**  
-   - 生成したマークダウンを VS Code の未保存ファイルとして生成・表示する。  
-   - ユーザはこれをそのままコピーして LLM へ送信可能。
+```xml
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+...
+```
+</details>
 
 ---
 
-## 5. 実装上のポイント
+## 2. VS Code Extension Overview
 
-1. **Git 管理ファイル構造の取得方法**  
-   - Node.js の子プロセス経由で `git ls-files` を使用したり、VS Code の提供する Git API を利用できる。  
-   - ユーザが複数のリポジトリを開いているケース（複数ルートフォルダ）にも対応可能にするかはオプションとする。
+This section focuses on the **VS Code extension** (e.g., `extension.ts`, the `package.json` configs, etc.).
 
-2. **ソリューションファイル & プロジェクトファイルの検索**  
-   - ワークスペース直下、またはサブフォルダ内に `.sln` / `.csproj` を再帰的に探す。  
-   - 1つのワークスペースに複数 `.sln` / `.csproj` がある場合はどうするか（全て出力 or ひとつに限定）を決める。
+### 2.1 Use Cases
 
-3. **コードブロックの言語指定**  
-   - `.cs` であれば \```csharp、`.csproj` / `.xml` は \```xml などとする。  
-   - 言語指定が難しい場合はデフォルトで \``` だけでも問題ない。
+1. **Code Reviews and Fix Requests to LLM**  
+   Summarize your entire solution (including `.sln`, `.csproj`) so that an LLM can see all relevant config and dependencies.
 
-4. **マルチプラットフォーム対応**  
-   - Windows / Mac / Linux 上での動作。  
-   - パスの区切り文字に注意する。
+2. **Multiple-File Updates**  
+   When you need changes spanning multiple files, you can send them all at once to an LLM.
 
-5. **パフォーマンス**  
-   - 取得対象が多すぎる場合は応答が遅くなる可能性があるため、一度に出力できるファイル数の制限や、ファイルサイズの上限を設けるなどの検討が必要。
+### 2.2 Functional Requirements
 
----
+1. **Retrieve Git-Managed Files**  
+   - Shows a list or simplified tree of files under version control.
 
-## 6. 例: 出力サンプル
+2. **Force-Output `.sln` and `.csproj` Files**  
+   - If missing, display a warning or error.
 
-下記はイメージ例です。
+3. **Include Currently Opened Files**  
+   - Collect C# code and any other relevant files from open VS Code tabs.
+
+4. **Display All Gathered Data as Markdown**  
+   - Open it in a new unsaved (Untitled) editor window.
+
+### 2.3 Workflow / How It Works
+
+1. **Command Execution**  
+   - Trigger via the Command Palette (`Ctrl+Shift+P` → `csharp-md-exporter.export`, or whichever command name you chose).
+
+2. **Gather Git File Structure**  
+   - Use `git ls-files` or the VS Code Git API to retrieve tracked files.
+
+3. **Locate `.sln` / `.csproj`**  
+   - Search workspace recursively for those files.
+
+4. **Extract Opened Files**  
+   - Use VS Code APIs to get file paths and content (including unsaved changes).
+
+5. **Build Markdown and Display**  
+   - Generate a single Markdown document with all the information.
+
+### 2.4 Implementation Notes
+
+- **Git File Retrieval**  
+  Uses child processes (`git ls-files`) or the VS Code Git extension API.
+
+- **File Pattern Matching**  
+  Recursively searches for `.sln` / `.csproj`.
+
+- **Code Block Language Detection**  
+  For `.cs`, uses ```csharp; for `.csproj`, uses ```xml, etc.
+
+- **Performance Considerations**  
+  Large projects may result in big outputs—consider limiting file size or count.
+
+### 2.5 Sample Output
+
+Below is an excerpt of the kind of Markdown output the extension might generate:
+
+<details>
+<summary>Sample Markdown</summary>
 
 ```
-\`\`\`
 # Git File Structure
 - .gitignore
 - MyProject
@@ -135,22 +117,20 @@
     - MyProject.csproj
     - Program.cs
     - SomeClass.cs
-  - MyProject.Tests
-    - MyProject.Tests.csproj
-    - ProgramTests.cs
+  ...
 
-# MyProject.sln
-\`\`\`xml
+# /path/to/MyProject.sln
+```xml
 (Solution file content)
-\`\`\`
+```
 
-# MyProject/MyProject.csproj
-\`\`\`xml
+# /path/to/MyProject/MyProject.csproj
+```xml
 (Project file content)
-\`\`\`
+```
 
-# MyProject/Program.cs
-\`\`\`csharp
+# /path/to/MyProject/Program.cs
+```csharp
 using System;
 
 namespace MyProject
@@ -163,13 +143,44 @@ namespace MyProject
         }
     }
 }
-\`\`\`
-
-# MyProject/SomeClass.cs
-\`\`\`csharp
-public class SomeClass
-{
-    // ...
-}
-\`\`\`
 ```
+```
+</details>
+
+---
+
+## 3. How to Build and Run
+
+1. **.NET Build**  
+   - Install [.NET 8.0 SDK or later](https://dotnet.microsoft.com/en-us/download).
+   - Open the solution in Visual Studio, Visual Studio Code, or run `dotnet build`.
+
+2. **VS Code Extension**  
+   - Go to the `csharp-md-exporter` folder.
+   - Run `npm install`, `npm run compile`, and `vsce package` (assuming you have [VSCE](https://code.visualstudio.com/api/working-with-extensions/publishing-extension) installed).
+
+3. **Installing the Extension**  
+   - Install the resulting `.vsix` file by going to VS Code → Extensions panel → `...` → `Install from VSIX...`.
+
+---
+
+## 4. License
+
+Include your license information here, for example:
+
+```
+MIT License
+Copyright ...
+Permission is hereby granted, free of charge, ...
+```
+
+---
+
+## 5. Contact / Author
+
+- **Author**: Your Name (GitHub handle, website, or email)  
+- **Issues / Feedback**: Please open an [issue](https://github.com/your-repo/issues) on GitHub.
+
+---
+
+Feel free to adjust the headings or the level of detail. The key point is to keep **Solution Explanation** (C# side) and **Extension Explanation** (VS Code side) as separate top-level sections in your README, with a clear, clickable table of contents for easy navigation.

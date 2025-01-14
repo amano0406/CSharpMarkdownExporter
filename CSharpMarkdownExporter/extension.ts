@@ -4,43 +4,50 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 /**
- * この拡張機能は、C# のプロジェクトを開いている Visual Studio Code 上で:
- * 1. Git で管理されているファイル構造（ディレクトリツリー）
- * 2. ソリューションファイル（.sln）
- * 3. プロジェクトファイル（.csproj）
- * 4. 現在開いているファイルのコード
- * を一括して Markdown に出力するためのものです。
+ * This extension ("CSharp Markdown Exporter") works within a Visual Studio Code
+ * environment where a C# project is open. It accomplishes the following:
+ * - Retrieves the Git-tracked file structure (via `git ls-files`)
+ * - Finds any .sln files and .csproj files within the workspace
+ * - Collects the content of all currently open files in the editor
+ * - Outputs all gathered information into a single Markdown document
+ *
+ * Code structure overview:
+ * - activate(context): Registers the extension command and handles the main logic.
+ * - deactivate(): Cleans up resources when the extension is disabled (if necessary).
+ * - getGitFiles(rootPath): Executes "git ls-files" to retrieve Git-managed files.
+ * - findFiles(pattern): Finds files in the workspace based on a given pattern.
+ * - getAllOpenedTextDocuments(): Gathers all currently open text documents.
+ * - buildMarkdown(...): Constructs the final Markdown string from all data sources.
  */
-
 export function activate(context: vscode.ExtensionContext) {
     console.log('Extension "CSharp Markdown Exporter" is now active!');
 
-    // 拡張機能のコマンドを登録
+    // Register the extension command
     const disposable = vscode.commands.registerCommand('csharp-md-exporter.export', async () => {
         try {
-            // ワークスペースが開かれているかチェック
+            // Check if a workspace is open
             const workspaceFolders = vscode.workspace.workspaceFolders;
             if (!workspaceFolders || workspaceFolders.length === 0) {
                 vscode.window.showErrorMessage('No workspace is open. Please open a folder or workspace first.');
                 return;
             }
 
-            // 1. Git 管理のファイル構造を取得
+            // Retrieve the list of Git-managed files
             const gitFiles = await getGitFiles(workspaceFolders[0].uri.fsPath);
 
-            // 2. ソリューションファイル (.sln) を検索
+            // Find solution files (.sln)
             const slnFiles = await findFiles('**/*.sln');
 
-            // 3. プロジェクトファイル (.csproj) を検索
+            // Find project files (.csproj)
             const csprojFiles = await findFiles('**/*.csproj');
 
-            // 4. 現在開いているファイルを取得 (tabGroups + 型アサーション)
+            // Get all currently open text documents
             const openFiles = getAllOpenedTextDocuments();
 
-            // マークダウンを組み立て
+            // Build the Markdown content
             const md = buildMarkdown(gitFiles, slnFiles, csprojFiles, openFiles);
 
-            // Untitled のドキュメントとして表示
+            // Display in a new "Untitled" document with Markdown syntax
             const doc = await vscode.workspace.openTextDocument({
                 content: md,
                 language: 'markdown',
@@ -56,14 +63,14 @@ export function activate(context: vscode.ExtensionContext) {
 }
 
 /**
- * 拡張機能が無効化されたときの処理
+ * Called when the extension is deactivated
  */
 export function deactivate() {
-    // 必要ならリソース解放などを記述
+    // Clean-up logic can go here if needed
 }
 
 /**
- * Git 管理のファイル一覧を取得 (git ls-files)
+ * Retrieve the list of Git-managed files using "git ls-files"
  */
 function getGitFiles(rootPath: string): Promise<string[]> {
     return new Promise((resolve, reject) => {
@@ -81,7 +88,7 @@ function getGitFiles(rootPath: string): Promise<string[]> {
 }
 
 /**
- * ワークスペース内をパターン検索でファイルを取得
+ * Find files within the workspace using a given pattern
  */
 async function findFiles(pattern: string): Promise<string[]> {
     const uris = await vscode.workspace.findFiles(pattern, '**/node_modules/**');
@@ -89,18 +96,18 @@ async function findFiles(pattern: string): Promise<string[]> {
 }
 
 /**
- * 現在開いている「すべてのタブ」（tabGroups）を走査し、
- * 対応する TextDocument の内容を取得する (アプローチB: 型アサーション)
+ * Gather all currently open text documents by iterating through
+ * all tab groups (using a type assertion for tab.input).
  */
 function getAllOpenedTextDocuments(): { filePath: string; language: string; content: string }[] {
     const results: { filePath: string; language: string; content: string }[] = [];
 
     for (const group of vscode.window.tabGroups.all) {
         for (const tab of group.tabs) {
-            // tab.input が unknown のため、「(tab.input as any)」でキャスト
+            // tab.input is unknown, so cast it to any
             const inputAsAny = tab.input as any;
 
-            // inputAsAny.uri があれば、それを使って textDocument を探す
+            // If inputAsAny.uri exists, use it to find the textDocument
             if (inputAsAny?.uri) {
                 const doc = vscode.workspace.textDocuments.find(d =>
                     d.uri.toString() === inputAsAny.uri.toString()
@@ -109,12 +116,12 @@ function getAllOpenedTextDocuments(): { filePath: string; language: string; cont
                     continue;
                 }
 
-                // 重複チェック
+                // Prevent duplicates
                 if (results.some(r => r.filePath === doc.fileName)) {
                     continue;
                 }
 
-                // 拡張子からコードブロック言語を決定 (必要に応じて追加)
+                // Determine the code block language based on the file extension
                 const ext = path.extname(doc.fileName).toLowerCase();
                 let language = '';
                 switch (ext) {
@@ -145,7 +152,11 @@ function getAllOpenedTextDocuments(): { filePath: string; language: string; cont
 }
 
 /**
- * 取得したファイル一覧、.sln/.csproj の内容、開いているドキュメントをまとめて Markdown 化
+ * Constructs the final Markdown output from:
+ *  - Git-managed file paths
+ *  - .sln files
+ *  - .csproj files
+ *  - Open text documents
  */
 function buildMarkdown(
     gitFiles: string[],
@@ -155,14 +166,14 @@ function buildMarkdown(
 ): string {
     const lines: string[] = [];
 
-    // 1. Git 管理ファイル構造
+    // Git-tracked file structure
     lines.push('# Git File Structure');
     gitFiles.forEach(f => {
         lines.push(`- ${f}`);
     });
     lines.push('');
 
-    // 2. ソリューションファイル (.sln)
+    // Solution files (.sln)
     if (slnFiles.length === 0) {
         lines.push('**[Warning] No .sln file found.**\n');
     } else {
@@ -175,7 +186,7 @@ function buildMarkdown(
         }
     }
 
-    // 3. プロジェクトファイル (.csproj)
+    // Project files (.csproj)
     if (csprojFiles.length === 0) {
         lines.push('**[Warning] No .csproj file found.**\n');
     } else {
@@ -188,7 +199,7 @@ function buildMarkdown(
         }
     }
 
-    // 4. 現在開いているファイルのコードを出力
+    // Open files
     for (const file of openFiles) {
         lines.push(`# ${file.filePath}`);
         lines.push('```' + (file.language || ''));
